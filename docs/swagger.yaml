@@ -1,0 +1,20 @@
+basePath: /
+host: localhost:8080
+info:
+  contact: {}
+  description: Account Service
+  title: Account Service
+  version: "1.0"
+paths:
+  /ping:
+    get:
+      description: Returns pong
+      responses:
+        "200":
+          description: pong
+          schema:
+            type: string
+      summary: Check service availability
+      tags:
+      - health
+swagger: "2.0"
