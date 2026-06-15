@@ -13,6 +13,7 @@ type Config struct {
 	Host        string `env:"HTTP_HOST" required:"true" default:"localhost"`
 	Port        int    `env:"HTTP_PORT" required:"true" default:"9000"`
 	LogLevel    string `env:"LOG_LEVEL" required:"true" default:"info"`
+	DbDsn       string `env:"DB_DSN" required:"true" default:""`
 }
 
 func Load() (*Config, error) {
