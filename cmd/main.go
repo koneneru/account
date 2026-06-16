@@ -7,10 +7,13 @@ import (
 	"account/internal/repository"
 	"fmt"
 	"log"
+	"net"
 
 	"github.com/gin-gonic/gin"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/reflection"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -39,15 +42,24 @@ func main() {
 	repo := repository.NewRepository(db, &logger)
 	_ = repo
 
-	router := gin.Default()
-	err = router.SetTrustedProxies([]string{"127.0.0.1"})
+	listenAddr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
+	lis, err := net.Listen("tcp", listenAddr)
 	if err != nil {
-		logger.Error().Msgf("Failed to load trusted proxies: %v", err)
+		logger.Error().Msgf("Failed to listen on %s: %v", listenAddr, err)
 		return
 	}
-	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-	router.GET("/ping", PingExample)
-	router.Run(fmt.Sprintf("%s:%d", cfg.Host, cfg.Port))
+
+	grpcServer := grpc.NewServer()
+
+	healthSrv := health.NewServer()
+	grpc_health_v1.RegisterHealthServer(grpcServer, healthSrv)
+	reflection.Register(grpcServer)
+
+	logger.Info().Msgf("gRPC server listening on %s", listenAddr)
+	if err := grpcServer.Serve(lis); err != nil {
+		logger.Error().Msgf("Failed to serve gRPC: %v", err)
+		return
+	}
 
 	logger.Info().Msg("service satrting up")
 }
