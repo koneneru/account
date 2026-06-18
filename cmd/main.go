@@ -5,11 +5,17 @@ import (
 	"account/internal/config"
 	"account/internal/logger"
 	"account/internal/repository"
+	"account/internal/server"
+	"account/internal/service"
+	"database/sql"
 	"fmt"
 	"log"
 	"net"
 
+	accountpb "github.com/koneneru/contracts/account/go"
+
 	"github.com/gin-gonic/gin"
+	"github.com/pressly/goose/v3"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
@@ -39,8 +45,26 @@ func main() {
 	}
 	logger.Info().Msg("database connected")
 
+	migrationConn, err := db.DB()
+	if migrationConn == nil {
+		logger.Fatal().Err(err).Msg("failed to select migrations dialect")
+	}
+
+	dbGoose, err := sql.Open("postgres", cfg.DbDsn)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("failed to create sql connection")
+	}
+
+	if err := goose.Up(dbGoose, "internal/migrations"); err != nil {
+		logger.Fatal().Err(err).Msg("failed to run up migrations")
+	}
+
 	repo := repository.NewRepository(db, &logger)
-	_ = repo
+	service := service.New(repo, &logger)
+	server := server.New(service, &logger)
+
+	s := grpc.NewServer()
+	accountpb.RegisterAccountServer(s, server)
 
 	listenAddr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
 	lis, err := net.Listen("tcp", listenAddr)
@@ -49,14 +73,12 @@ func main() {
 		return
 	}
 
-	grpcServer := grpc.NewServer()
-
 	healthSrv := health.NewServer()
-	grpc_health_v1.RegisterHealthServer(grpcServer, healthSrv)
-	reflection.Register(grpcServer)
+	grpc_health_v1.RegisterHealthServer(s, healthSrv)
+	reflection.Register(s)
 
 	logger.Info().Msgf("gRPC server listening on %s", listenAddr)
-	if err := grpcServer.Serve(lis); err != nil {
+	if err := s.Serve(lis); err != nil {
 		logger.Error().Msgf("Failed to serve gRPC: %v", err)
 		return
 	}
