@@ -30,7 +30,7 @@ func (r *Repository) CreateUser(ctx context.Context, user model.User) error {
 	res := r.db.WithContext(ctx).
 		Clauses(clause.OnConflict{UpdateAll: true}).
 		Create(&repoUser)
-	if res != nil {
+	if res.Error != nil {
 		r.logger.Err(res.Error).Msg("failed to save user")
 		return fmt.Errorf("failed to save user: %w", res.Error)
 	}
