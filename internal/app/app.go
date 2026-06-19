@@ -2,6 +2,7 @@ package app
 
 import (
 	"account/internal/config"
+	_ "account/internal/migrations"
 	"account/internal/repository"
 	"account/internal/server"
 	"account/internal/service"
@@ -12,6 +13,7 @@ import (
 
 	accountpb "github.com/koneneru/contracts/account/go"
 
+	_ "github.com/lib/pq"
 	"github.com/pressly/goose/v3"
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
@@ -89,7 +91,7 @@ func (a *App) runMigrations(ctx context.Context) error {
 		return fmt.Errorf("failed to select migrations dialect: %w", err)
 	}
 
-	dbGoose, err := sql.Open("postrges", a.cfg.DbDsn)
+	dbGoose, err := sql.Open("postgres", a.cfg.DbDsn)
 	if err != nil {
 		return fmt.Errorf("failed to create sql connection: %w", err)
 	}
