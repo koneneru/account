@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:18.4-alpine
+    container_name: account_local_postgres_18
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      - account_pgdata_18:/var/lib/postgresql
+
+volumes:
+  account_pgdata_18:
